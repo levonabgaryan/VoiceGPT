@@ -26,6 +26,5 @@ async def interview(audio: UploadFile):
 
     output_audio_file_name = f"{uuid4()}.mp3"
     headers = {"Content-Disposition": f'attachment; filename="{output_audio_file_name}"'}
-    print(headers)
     return StreamingResponse(audio_stream, media_type="audio/mpeg", headers=headers)
 
