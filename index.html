@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Voice Upload</title>
+  <style>
+    /* Сброс некоторых базовых стилей */
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #f0f4f8;
+      color: #333;
+      text-align: center;
+      margin: 0;
+      padding: 40px 20px;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: start;
+      align-items: center;
+    }
+
+    h1 {
+      font-weight: 700;
+      color: #2c3e50;
+      margin-bottom: 30px;
+      user-select: none;
+    }
+
+    input[type="file"] {
+      border: 2px dashed #3498db;
+      background: #eaf4fc;
+      padding: 15px 20px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background-color 0.3s ease, border-color 0.3s ease;
+      max-width: 320px;
+      width: 100%;
+      font-size: 16px;
+      color: #2980b9;
+      user-select: none;
+    }
+
+    input[type="file"]:hover {
+      background-color: #d0e8fb;
+      border-color: #1c7ed6;
+    }
+
+    button {
+      margin-top: 25px;
+      padding: 14px 36px;
+      font-size: 18px;
+      font-weight: 600;
+      color: #fff;
+      background: #3498db;
+      border: none;
+      border-radius: 40px;
+      cursor: pointer;
+      box-shadow: 0 6px 12px rgba(52, 152, 219, 0.4);
+      transition: background-color 0.3s ease, box-shadow 0.3s ease;
+      user-select: none;
+    }
+
+    button:hover:not(:disabled) {
+      background: #217dbb;
+      box-shadow: 0 8px 18px rgba(33, 125, 187, 0.5);
+    }
+
+    button:disabled {
+      background: #95a5a6;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+
+    #status {
+      margin-top: 30px;
+      font-size: 20px;
+      font-weight: 600;
+      min-height: 24px;
+      color: #27ae60; /* зелёный для успеха */
+      user-select: none;
+      transition: color 0.3s ease;
+    }
+
+    #status.error {
+      color: #e74c3c; /* красный для ошибок */
+    }
+  </style>
+</head>
+<body>
+  <h1>Upload MP3 and Get Response</h1>
+
+  <input type="file" id="audioFile" accept="audio/mp3" />
+
+  <button id="sendBtn" onclick="sendAudio()">Send to Server</button>
+
+  <p id="status"></p>
+
+  <script>
+    async function sendAudio() {
+      const fileInput = document.getElementById('audioFile');
+      const sendBtn = document.getElementById('sendBtn');
+      const statusEl = document.getElementById("status");
+      const file = fileInput.files[0];
+
+      statusEl.classList.remove("error");
+      statusEl.textContent = "";
+
+      if (!file) {
+        alert("Please select an MP3 file first.");
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append("audio", file);
+
+      statusEl.textContent = "Sending...";
+      sendBtn.disabled = true;
+
+      try {
+        const response = await fetch("http://localhost:8000/voice-assistant/ask", {
+          method: "POST",
+          body: formData,
+        });
+
+        if (!response.ok) {
+          const errText = await response.text();
+          throw new Error(`Server Error: ${response.status} - ${errText}`);
+        }
+
+        const blob = await response.blob();
+
+        const downloadUrl = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = downloadUrl;
+
+        const contentDisposition = response.headers.get("Content-Disposition");
+        console.log("Content-Disposition header:", contentDisposition);
+
+        const filenameMatch = contentDisposition?.match(/filename="?([^"]+)"?/);
+        const filename = filenameMatch ? filenameMatch[1] : "response.mp3";
+
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(downloadUrl);
+
+        statusEl.textContent = "Downloaded successfully!";
+      } catch (error) {
+        statusEl.classList.add("error");
+        statusEl.textContent = "Error occurred!";
+        alert("Error: " + error.message);
+        console.error(error);
+      } finally {
+        sendBtn.disabled = false;
+      }
+    }
+  </script>
+</body>
+</html>
